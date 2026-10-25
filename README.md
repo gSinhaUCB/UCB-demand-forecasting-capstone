@@ -59,7 +59,7 @@ In modern retail supply chains, inventory management is a delicate balancing act
 
 ---
 
-## 5. Roadmap for Module 24
+## 5. Next Steps
 * Implement and benchmark advanced gradient-boosted decision trees (`LightGBM`, `XGBoost`, `CatBoost`) handling multi-series interactions and hierarchical grouping.
 * Experiment with statistical and econometric models (`AutoARIMA` / `SARIMAX`) incorporating external regressors (promotional flags, holiday schedules).
 * Translate forecast intervals into actionable supply-chain policies: calculating Safety Stock levels, Reorder Points (ROP), and expected holding cost reductions versus current heuristic baselines.
@@ -67,3 +67,10 @@ In modern retail supply chains, inventory management is a delicate balancing act
 ---
 
 ## 6. Repository Structure
+
+* **`README.md`**: Executive project brief, business rationale, and report summary
+* **`notebooks/`**: Directory containing analytical workflows
+  * `capstone_initial_eda_baseline.ipynb`: Complete data cleaning, time-series EDA, decomposition, and baseline Ridge model
+* **`data/`**: Data directory for schema definitions and raw dataset storage
+* **`.gitignore`**: Excludes temporary files, Jupyter checkpoints, and environment artifacts
+
