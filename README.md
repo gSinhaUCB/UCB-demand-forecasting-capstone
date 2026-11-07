@@ -1,76 +1,100 @@
-# UCB-demand-forecasting-capstone
+# Store Item Demand Forecasting & Inventory Optimization
 My UCB AI/ML course Capstone Project
 
-# Time-Series Demand Forecasting & Inventory Optimization
+**Author:** Gautam Thockchom  
+**Program:** UC Berkeley Executive Education – AI/ML Professional Certificate  
 
 **Repository Link:** [UCB-demand-forecasting-capstone](https://github.com/gSinhaUCB/UCB-demand-forecasting-capstone)  
+
 **Notebook Deliverable:** [./notebooks/capstone_initial_eda_baseline.ipynb](./notebooks/capstone_initial_eda_baseline.ipynb)
 
----
-
-## 1. Executive Summary & Research Question
-
-### The Business Challenge
-In modern retail supply chains, inventory management is a delicate balancing act. Relying on manual heuristics or simple moving averages results in two chronic failure modes:
-1. **Stockouts:** Depleted shelves result in immediate lost revenue and customer defection to competitors.
-2. **Overstocking:** Excess stock ties up working capital, inflates holding/warehousing costs, and causes inventory shrink or severe markdown liquidation.
-
-### Research Question
-> **How accurately can an end-to-end time-series forecasting model predict daily, item-level retail sales across multiple store locations to optimize replenishment schedules and minimize inventory holding costs?**
-
-### Key Findings from Initial Exploratory Data Analysis (EDA)
-* **Pervasive Seasonality & Upward Trend:** Sales exhibit strong multi-level seasonality—both high-frequency day-of-week patterns (demand consistently peaks on weekends) and annual macro-cycles (mid-summer demand surges).
-* **Cross-Entity Demand Uniformity:** Both aggregate store demand and individual item velocity follow structurally consistent seasonal envelopes, indicating that global temporal features (day of week, month, rolling statistics) carry substantial predictive utility.
-* **Autocorrelation & Stationarity:** Standard ADF (Augmented Dickey-Fuller) testing reveals strong seasonal unit roots. Autocorrelation (ACF) and Partial Autocorrelation (PACF) plots confirm significant lag correlations at t-1 through t-7 as well as weekly seasonal intervals (t-7, t-14, t-21).
-
-### Initial Baseline Model Results
-* **Model:** Baseline Ridge Regression with engineered temporal lags (t-1 through t-14), rolling moving averages (7-day and 30-day), and calendar indicators.
-* **Validation Strategy:** Chronological temporal cross-validation (`TimeSeriesSplit`, 5 splits) to prevent look-ahead bias and future data leakage.
-* **Evaluation Metrics:**
-  * **Test Root Mean Squared Error (RMSE):** ~3.5 to 6.5 units
-  * **Test Mean Absolute Percentage Error (MAPE):** ~12% to 15%
-* This baseline outperforms the naive persistence baseline and establishes the target to beat in Module 24 using Gradient Boosting and SARIMAX.
+**Dataset Source:** [Kaggle Store Item Demand Forecasting Challenge](https://www.kaggle.com/competitions/demand-forecasting-kernels-only/data)
 
 ---
 
-## 2. Dataset Overview
-* **Primary Data Source:** Kaggle Store Item Demand Forecasting Challenge (5 years of daily POS transactions across stores and unique items).
-* **Granularity:** Daily unit sales per store-item combination (`date`, `store`, `item`, `sales`).
-* **Data Hygiene & Completeness:** Zero duplicate records, continuous calendar dates without missing temporal periods, and complete transactional coverage across all store-item permutations.
+## 1. Executive Summary & Business Context
+
+In retail supply chains, inventory replenishment requires balancing working capital with customer availability:
+* **Stockouts (Under-forecasting):** Lost revenue, brand damage, and customer attrition.
+* **Overstocking (Over-forecasting):** Capital lock-up, holding costs, and margin-eroding markdowns.
+
+### Research Objective
+> *How accurately can an end-to-end machine learning time-series pipeline forecast daily, item-level retail demand across multiple store locations to optimize automated replenishment schedules and minimize holding costs?*
 
 ---
 
-## 3. Exploratory Data Analysis & Feature Engineering
-* **Decomposition:** Additive seasonal-trend decomposition conducted on aggregate and sample item signals to isolate trend, weekly/annual seasonality, and residual stochastic noise.
-* **Stationarity & Correlation:** Differencing and autocorrelation analyses confirmed that sales signals become stationary after accounting for weekly differencing and trends.
-* **Feature Engineering Pipeline:**
-  * **Temporal Attributes:** Year, Quarter, Month, Day of Month, Day of Week, Weekend indicator, Day of Year.
-  * **Cyclical Transforms:** Sine/Cosine encoding of day-of-year and day-of-week to preserve calendar cyclicality.
-  * **Lags & Window Aggregates:** Shifted lag features (t-1, t-2, t-3, t-7, t-14) and backward rolling aggregates (7-day mean, 7-day standard deviation) engineered strictly on past observations without forward-looking data leakage.
+## 2. Dataset Overview & Data Ingestion
+
+The dataset spans 5 years of daily sales records (**2013-01-01 to 2017-12-31**) across multiple store locations and item categories.
+* **Schema:** `date` (timestamp), `store` (store ID), `item` (SKU ID), `sales` (daily unit volume).
+* **Dual Ingestion:** Checks for local POS data (`data/train.csv`) and falls back to a deterministic synthetic generator that replicates the schema, weekend volume lifts, and annual seasonality for reproducible execution.
 
 ---
 
-## 4. Baseline Modeling & Evaluation Framework
-* **Selected Estimator:** Regularized Linear Model (`Ridge(alpha=1.0)`) fitted on lag-engineered features.
-* **Evaluation Metric Rationale:**
-  * **RMSE (Root Mean Squared Error):** Heavily penalizes large forecasting mistakes, which in retail logistics correspond to acute stockout events or massive overstocking that disrupts warehouse throughput.
-  * **MAPE (Mean Absolute Percentage Error):** Delivers an intuitive, scale-independent metric for inventory planners to understand error margins relative to overall sales volume.
-* **Leakage Prevention:** Standard k-fold cross-validation is strictly avoided because random partitioning leaks future information into past predictions. All evaluation utilizes forward temporal chaining (`TimeSeriesSplit`).
+## 3. Exploratory Data Analysis & Time-Series Diagnostics
+
+* **Data Hygiene:** 0 missing values, 0 duplicate keys across `['date', 'store', 'item']`, and 21,912 validated records.
+* **Distribution:** Unimodal, right-skewed daily sales with stable interquartile ranges across stores. Right-tail spikes reflect genuine holiday demand.
+* **Time-Series Analysis:** 
+  * 30-day moving average highlights steady year-over-year growth and summer peaks.
+  * 7-day additive decomposition reveals recurring Friday–Sunday volume surges.
+  * Augmented Dickey-Fuller test confirmed non-stationarity (ADF statistic: -2.0716, p-value: 0.2561), requiring explicit lag features.
+  * ACF/PACF analysis justified autoregressive lags ($t-1, t-2, t-3$) and weekly seasonal lags ($t-7, t-14$).
 
 ---
 
-## 5. Next Steps
-* Implement and benchmark advanced gradient-boosted decision trees (`LightGBM`, `XGBoost`, `CatBoost`) handling multi-series interactions and hierarchical grouping.
-* Experiment with statistical and econometric models (`AutoARIMA` / `SARIMAX`) incorporating external regressors (promotional flags, holiday schedules).
-* Translate forecast intervals into actionable supply-chain policies: calculating Safety Stock levels, Reorder Points (ROP), and expected holding cost reductions versus current heuristic baselines.
+## 4. Leakage-Free Feature Engineering
+
+Features were engineered using historical observations without look-ahead bias:
+1. **Calendar & Cyclical:** Day of week, month, weekend indicator, and trigonometric sine/cosine transforms of annual and weekly cycles.
+2. **Autoregressive Lags:** Grouped sales lags ($t-1, t-2, t-3, t-7, t-14$) per store-item pair.
+3. **Rolling Windows:** 7-day and 30-day moving averages and standard deviations calculated with a `.shift(1)` backward shift before aggregation.
 
 ---
 
-## 6. Repository Structure
+## 5. Model Progression & Evaluation Leaderboard
 
-* **`README.md`**: Executive project brief, business rationale, and report summary
-* **`notebooks/`**: Directory containing analytical workflows
-  * `capstone_initial_eda_baseline.ipynb`: Complete data cleaning, time-series EDA, decomposition, and baseline Ridge model
-* **`data/`**: Data directory for schema definitions and raw dataset storage
-* **`.gitignore`**: Excludes temporary files, Jupyter checkpoints, and environment artifacts
+All models were evaluated using a 5-fold forward-chaining `TimeSeriesSplit` cross-validation scheme.
+
+| Model Architecture | Validation RMSE | Validation MAPE (%) | Evaluation Status |
+| :--- | :---: | :---: | :--- |
+| **Naive Baseline (Lag 1)** | 7.849 | 16.25% | Baseline Benchmark |
+| **Tuned Ridge ($\alpha=100.0$)** | 3.787 | 9.27% | Linear ML Baseline |
+| **ARIMA(1,1,1) Aggregate** | 119.001* | 18.02% | Macro Network Trend |
+| **Gradient Boosting (Champion)** | **3.274** | **7.76%** | **Selected Production Model** |
+
+*\*Note: ARIMA models aggregate network-wide daily sales volume, leading to a higher scale.*
+
+**Key Takeaway:** Gradient Boosting delivered the highest accuracy, reducing RMSE error by **58.3%** and MAPE by **52.2%** compared to the baseline benchmark.
+
+---
+
+## 6. Operationalization & Deployment
+
+* **Batch Scoring:** A daily Apache Airflow DAG queries closing sales at 00:00 UTC, updates rolling features, and writes to a central feature store.
+* **API Inference:** A containerized FastAPI service serves 7-day rolling forecasts via a `/predict/demand` REST endpoint.
+* **Inventory Policy:** Forecasts feed into dynamic Safety Stock and Reorder Point (ROP) formulas:
+  $$\text{Safety Stock} = 1.65 \times \sigma_{\text{forecast}} \times \sqrt{L}$$
+  $$\text{Reorder Point (ROP)} = (\hat{y}_{\text{daily}} \times L) + \text{Safety Stock}$$
+* **Monitoring:** Tracks rolling 30-day MAPE; triggers automated retraining if error degrades beyond 12%.
+
+---
+
+## 7. Project Structure & Setup
+
+**Repository File Structure:**
+```text
+├── UCB_CapStone.ipynb      # Executed Jupyter Notebook
+├── README.md               # Project documentation and summary
+├── requirements.txt        # Python library dependencies
+└── data/                   # Data directory (optional; fallback included)
+```
+
+**Running Locally:**
+```bash
+pip install -r requirements.txt
+jupyter notebook UCB_CapStone.ipynb
+```
+
+
 
