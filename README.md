@@ -1,11 +1,9 @@
-
 # Retail Store Item Demand Forecasting & Inventory Optimization
-
 **Capstone Final Report**  
-**Author:** Gautam Thockchom  
+**Author:** Gautam Sinha  
 **Academic Reviewer:** Ahmet Cakmak  
 **Repository Link:** [UCB-demand-forecasting-capstone](https://github.com/gSinhaUCB/UCB-demand-forecasting-capstone)  
-**Primary Notebook:** [`notebooks/Gautam_UCB_Capstone_fina.ipynb`](./notebooks/Gautam_UCB_Capstone_final.ipynb)
+**Primary Notebook:** [notebooks/Gautam_UCB_Capstone_final.ipynb](./notebooks/Gautam_UCB_Capstone_final.ipynb)
 
 ---
 
@@ -94,18 +92,15 @@ We evaluated multiple distinct model architectures using a **TimeSeriesSplit (5-
 **Repository File Structure:**
 ```text
 ├── notebooks/
-│   └── Gautam_UCB_Capstone_final.ipynb   # Executed Jupyter Notebook
+│   └── capstone_initial_eda_baseline.ipynb   # Executed Jupyter Notebook
 ├── README.md                                 # Executive summary and report
 ├── requirements.txt                          # Python dependencies
 └── data/
     └── .gitkeep                              # Data placeholder (fallback included)
+```
 
-
-
-
-
-**Running Locally:**
+### Run Locally:
 ```bash
 pip install -r requirements.txt
-jupyter notebook UCB_CapStone.ipynb
+jupyter notebook notebooks/Gautam_UCB_Capstone_final.ipynb
 ```
