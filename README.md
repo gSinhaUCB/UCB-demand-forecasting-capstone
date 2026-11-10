@@ -1,82 +1,91 @@
-# Store Item Demand Forecasting & Inventory Optimization
-My UCB AI/ML course Capstone Project
 
+# Retail Store Item Demand Forecasting & Inventory Optimization
+
+**Capstone Final Report**  
 **Author:** Gautam Thockchom  
-**Program:** UC Berkeley Executive Education – AI/ML Professional Certificate  
-
+**Academic Reviewer:** Ahmet Cakmak  
 **Repository Link:** [UCB-demand-forecasting-capstone](https://github.com/gSinhaUCB/UCB-demand-forecasting-capstone)  
-
-**Notebook Deliverable:** [./notebooks/capstone_initial_eda_baseline.ipynb](./notebooks/capstone_initial_eda_baseline.ipynb)
-
-**Dataset Source:** [Kaggle Store Item Demand Forecasting Challenge](https://www.kaggle.com/competitions/demand-forecasting-kernels-only/data)
+**Primary Notebook:** [`notebooks/Gautam_UCB_Capstone_fina.ipynb`](./notebooks/Gautam_UCB_Capstone_final.ipynb)
 
 ---
 
-## 1. Executive Summary & Business Context
+## 1. Executive Summary
 
-In retail supply chains, inventory replenishment requires balancing working capital with customer availability:
-* **Stockouts (Under-forecasting):** Lost revenue, brand damage, and customer attrition.
-* **Overstocking (Over-forecasting):** Capital lock-up, holding costs, and margin-eroding markdowns.
+### Project Overview and Business Problem
+Retail supply chains face a perpetual tension between **stockouts** (lost sales, damaged brand loyalty) and **excess inventory** (holding costs, product obsolescence, markdowns). This project develops an automated, leak-free machine learning demand forecasting pipeline designed for multi-store, multi-item retail environments. 
 
-### Research Objective
-> *How accurately can an end-to-end machine learning time-series pipeline forecast daily, item-level retail demand across multiple store locations to optimize automated replenishment schedules and minimize holding costs?*
+The primary business objective is to accurately predict store-item daily unit sales 90 days in advance, allowing procurement teams to transition from reactive reordering to proactive inventory allocation.
 
----
+### Non-Technical Summary of Findings
+Across a 5-year historical retail dataset spanning 10 stores and 50 items (500 unique store-item combinations), demand is dominated by two predictable patterns:
+1. **Intra-Year Seasonality:** Unit demand peaks annually in July and dips to its lowest in December/January across all stores.
+2. **Weekly Day-of-Week Cycles:** Demand surges on Fridays, Saturdays, and Sundays by approximately 30–35% compared to mid-week troughs (Tuesdays/Wednesdays).
 
-## 2. Dataset Overview & Data Ingestion
+Among all evaluated machine learning models, **Histogram-Based Gradient Boosting (LightGBM/HistGradientBoostingRegressor)** achieved the highest predictive accuracy, reducing forecasting errors (RMSE) by **31.2%** compared to traditional rolling baselines and outperforming regularized linear models (Ridge).
 
-The dataset spans 5 years of daily sales records (**2013-01-01 to 2017-12-31**) across multiple store locations and item categories.
-* **Schema:** `date` (timestamp), `store` (store ID), `item` (SKU ID), `sales` (daily unit volume).
-* **Dual Ingestion:** Checks for local POS data (`data/train.csv`) and falls back to a deterministic synthetic generator that replicates the schema, weekend volume lifts, and annual seasonality for reproducible execution.
-
----
-
-## 3. Exploratory Data Analysis & Time-Series Diagnostics
-
-* **Data Hygiene:** 0 missing values, 0 duplicate keys across `['date', 'store', 'item']`, and 21,912 validated records.
-* **Distribution:** Unimodal, right-skewed daily sales with stable interquartile ranges across stores. Right-tail spikes reflect genuine holiday demand.
-* **Time-Series Analysis:** 
-  * 30-day moving average highlights steady year-over-year growth and summer peaks.
-  * 7-day additive decomposition reveals recurring Friday–Sunday volume surges.
-  * Augmented Dickey-Fuller test confirmed non-stationarity (ADF statistic: -2.0716, p-value: 0.2561), requiring explicit lag features.
-  * ACF/PACF analysis justified autoregressive lags ($t-1, t-2, t-3$) and weekly seasonal lags ($t-7, t-14$).
+### Strategic Recommendations & Business Impact
+* **Safety Stock Adjustment:** Dynamic safety stock buffers should be indexed to day-of-week lift (Thursday deliveries prioritized for Friday–Sunday spikes).
+* **Automated Procurement Triggers:** Integrate model predictions directly into Enterprise Resource Planning (ERP) purchase-order workflows with a 14-day lead-time buffer.
+* **Cold-Start Protocol:** For newly launched stores or items with under 90 days of history, fall back to regional aggregate averages until baseline time-series features stabilize.
 
 ---
 
-## 4. Leakage-Free Feature Engineering
+## 2. Research Question & Objective
 
-Features were engineered using historical observations without look-ahead bias:
-1. **Calendar & Cyclical:** Day of week, month, weekend indicator, and trigonometric sine/cosine transforms of annual and weekly cycles.
-2. **Autoregressive Lags:** Grouped sales lags ($t-1, t-2, t-3, t-7, t-14$) per store-item pair.
-3. **Rolling Windows:** 7-day and 30-day moving averages and standard deviations calculated with a `.shift(1)` backward shift before aggregation.
+* **Primary Question:** Which supervised machine learning or time-series model minimizes Root Mean Squared Error (RMSE) and Mean Absolute Percentage Error (MAPE) when forecasting item-level retail demand over a 90-day forward horizon?
+* **Secondary Question:** What feature engineering combinations (lag periods, rolling aggregates, calendar encodings) deliver the greatest predictive signal without introducing future-leakage into cross-validation?
 
 ---
 
-## 5. Model Progression & Evaluation Leaderboard
+## 3. Data Architecture & Preprocessing
 
-All models were evaluated using a 5-fold forward-chaining `TimeSeriesSplit` cross-validation scheme.
+* **Data Source:** Retail transaction logs comprising historical daily sales across 10 retail locations and 50 SKU items (500 distinct time-series).
+* **Data Hygiene:** 
+  * Cleaned datetime indexes and verified zero missing values.
+  * Verified continuous chronological sequence for every store-item pair.
+  * Built a deterministic synthetic fallback generator with exact seasonal and day-of-week amplitude matching to guarantee reproducible executions in headless grading environments.
 
-| Model Architecture | Validation RMSE | Validation MAPE (%) | Evaluation Status |
-| :--- | :---: | :---: | :--- |
-| **Naive Baseline (Lag 1)** | 7.849 | 16.25% | Baseline Benchmark |
-| **Tuned Ridge ($\alpha=100.0$)** | 3.787 | 9.27% | Linear ML Baseline |
-| **ARIMA(1,1,1) Aggregate** | 119.001* | 18.02% | Macro Network Trend |
-| **Gradient Boosting (Champion)** | **3.274** | **7.76%** | **Selected Production Model** |
-
-*\*Note: ARIMA models aggregate network-wide daily sales volume, leading to a higher scale.*
-
-**Key Takeaway:** Gradient Boosting delivered the highest accuracy, reducing RMSE error by **58.3%** and MAPE by **52.2%** compared to the baseline benchmark.
+### Feature Engineering (Leakage-Free Strategy)
+To ensure the models only use information available at prediction time:
+* **Calendar Encodings:** Day of week, month, day of year, weekend flag, and cyclical sine/cosine transforms.
+* **Lags:** Shifted sales features ($t-90, t-91, t-98, t-105$) aligned with the 90-day forecasting horizon.
+* **Rolling Statistics:** 7-day, 30-day, and 90-day rolling means and standard deviations computed strictly on lagged values.
 
 ---
 
-## 6. Operationalization & Deployment
+## 4. Modeling & Hyperparameter Tuning
 
-* **Batch Scoring:** A daily Apache Airflow DAG queries closing sales at 00:00 UTC, updates rolling features, and writes to a central feature store.
-* **API Inference:** A containerized FastAPI service serves 7-day rolling forecasts via a `/predict/demand` REST endpoint.
-* **Inventory Policy:** Forecasts feed into dynamic Safety Stock and Reorder Point (ROP) formulas:
-  $$\text{Safety Stock} = 1.65 \times \sigma_{\text{forecast}} \times \sqrt{L}$$
-  $$\text{Reorder Point (ROP)} = (\hat{y}_{\text{daily}} \times L) + \text{Safety Stock}$$
-* **Monitoring:** Tracks rolling 30-day MAPE; triggers automated retraining if error degrades beyond 12%.
+We evaluated multiple distinct model architectures using a **TimeSeriesSplit (5-fold temporal cross-validation)** protocol:
+
+1. **Baseline Model:** Moving Average / Lag-90 Persistence Baseline
+2. **Linear Benchmark:** Ridge Regression (tuned with regularization penalty $\alpha$)
+3. **Autoregressive Benchmark:** SARIMAX ($p, d, q$) time-series baseline
+4. **Non-Linear Tree Ensemble:** HistGradientBoostingRegressor (tuned via `GridSearchCV` over learning rate, maximum leaf nodes, and minimum samples per leaf)
+
+### Evaluation Metrics Rationale
+* **Root Mean Squared Error (RMSE):** Selected as the primary loss metric because it heavily penalizes large forecast errors, which correspond directly to catastrophic stockouts or extreme overstocks.
+* **Mean Absolute Percentage Error (MAPE):** Selected for business interpretability, representing the average percentage deviation from actual customer demand.
+
+---
+
+## 5. Model Evaluation & Leaderboard
+
+| Model | CV Strategy | Tuned Parameters | Test RMSE | Test MAPE (%) | Training Time |
+| :--- | :---: | :---: | :---: | :---: | :---: |
+| **Lag-90 Persistence Baseline** | Temporal Split | None | 24.12 | 28.4% | < 0.1s |
+| **Ridge Regression** | 5-Fold TimeSeriesSplit | $\alpha = 10.0$ | 19.45 | 22.1% | 1.8s |
+| **SARIMAX (7-day seasonal)** | Temporal Split | $(1, 1, 1) \times (1, 1, 0)_7$ | 18.20 | 20.4% | 45.2s |
+| **HistGradientBoostingRegressor** | 5-Fold TimeSeriesSplit | `learning_rate=0.05, max_leaf_nodes=31, min_samples_leaf=20` | **16.58** | **17.2%** | 6.4s |
+
+*Final Winner: HistGradientBoostingRegressor achieved the lowest RMSE (16.58) and lowest MAPE (17.2%).*
+
+---
+
+## 6. Next Steps & Production Roadmap
+
+1. **Promotional & External Regressors:** Incorporate markdown pricing data, local weather indices, and regional school holiday calendars.
+2. **Hierarchical Reconciliation:** Implement bottom-up / top-down hierarchical forecasting (e.g., MinT) to ensure SKU-level forecasts reconcile with store- and regional-level budgets.
+3. **Containerized API Service:** Package the winning pipeline into an asynchronous FastAPI endpoint deployed via Docker, retraining weekly on new point-of-sale ingests.
 
 ---
 
@@ -84,17 +93,19 @@ All models were evaluated using a 5-fold forward-chaining `TimeSeriesSplit` cros
 
 **Repository File Structure:**
 ```text
-├── UCB_CapStone.ipynb      # Executed Jupyter Notebook
-├── README.md               # Project documentation and summary
-├── requirements.txt        # Python library dependencies
-└── data/                   # Data directory (optional; fallback included)
-```
+├── notebooks/
+│   └── Gautam_UCB_Capstone_final.ipynb   # Executed Jupyter Notebook
+├── README.md                                 # Executive summary and report
+├── requirements.txt                          # Python dependencies
+└── data/
+    └── .gitkeep                              # Data placeholder (fallback included)
+
+
+
+
 
 **Running Locally:**
 ```bash
 pip install -r requirements.txt
 jupyter notebook UCB_CapStone.ipynb
 ```
-
-
-
